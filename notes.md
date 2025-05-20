@@ -120,4 +120,3 @@ spec:
 
 ---
 
-Souhaites-tu un **script Bash complet** pour automatiser tout ça (build → pull → push → sign) ?

@@ -1,6 +1,4 @@
-Excellente idée ✅
 
-Tu peux **stocker tes clés `cosign` (`cosign.key` et `cosign.pub`) dans un `Secret` OpenShift** pour les utiliser dans des pods ou scripts d'automatisation. Voici **comment le faire proprement**, ainsi que **comment signer et vérifier une image en utilisant ces clés stockées dans OpenShift**.
 
 ---
 
@@ -120,8 +118,3 @@ rm -rf ./cosign-keys
 ```
 
 ---
-
-Souhaites-tu que je t'écrive :
-
-* Un script bash qui automatise : extraction du secret → signature → vérification ?
-* Ou un `Pipeline Tekton` qui utilise le secret pour signer automatiquement après un build ?

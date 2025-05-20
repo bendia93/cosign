@@ -1,7 +1,3 @@
-Oui, exactement ✅
-
-Quand tu construis une image avec `oc new-build`, **OpenShift la pousse automatiquement dans son registre interne**, à cette adresse :
-
 ```bash
 image-registry.openshift-image-registry.svc:5000/<namespace>/<image-name>:<tag>
 ```
@@ -55,5 +51,3 @@ oc get istag springboot-app:latest -o jsonpath='{.image.dockerImageReference}'
     -p $(oc whoami -t) \
     image-registry.openshift-image-registry.svc:5000
   ```
-
-Tu veux que je t’écrive un **script Bash** pour tout faire (build → pull → push vers Artifactory → signer) ?

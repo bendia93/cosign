@@ -1,7 +1,3 @@
-Très bien 👌! Si tu veux **héberger le binaire `cosign` dans ton propre Artifactory (`artifactory.gc.com`)**, voici comment procéder étape par étape :
-
----
-
 ## ✅ Objectif :
 
 * Télécharger le binaire officiel `cosign`
@@ -87,6 +83,3 @@ RUN curl -u "$USER:$TOKEN" -LO \
 * Tu peux aussi stocker le **hash SHA256** dans un fichier `.sha256` à côté
 * Protège le dépôt avec des permissions `read-only` pour les consommateurs
 
----
-
-Souhaites-tu un script bash ou PowerShell pour automatiser le téléchargement et le push vers Artifactory ?

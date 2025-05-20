@@ -1,8 +1,7 @@
 # Install 
 https://github.com/sigstore/cosign/releases/tag/v2.5.0
 
-
-Très bien ! 🎯 Si tu es sur **Windows**, tu peux utiliser `cosign` sans problème. Voici un guide clair pour **installer, utiliser et signer des images Docker avec `cosign` sur Windows**.
+ 
 
 ---
 
@@ -106,4 +105,3 @@ cosign sign --key cosign.key \
 
 ---
 
-Souhaites-tu que je t’écrive un script `.ps1` (PowerShell) qui fait tout : build, push, signer ?

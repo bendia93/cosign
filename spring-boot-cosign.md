@@ -1,4 +1,4 @@
-Excellent objectif 👌! Tu veux développer un **endpoint Spring Boot** (Java 21) pour :
+
 
 * **Signer** une image Docker via `cosign`
 * **Vérifier** une image Docker via `cosign`
@@ -142,7 +142,3 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 
 ---
 
-Souhaites-tu que je t’aide à :
-
-* Générer un projet Spring Boot complet avec ces endpoints ?
-* Ajouter l’appel de ces endpoints dans un CI/CD pipeline (e.g. GitLab, Jenkins, Tekton) ?
