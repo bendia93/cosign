@@ -1,0 +1,180 @@
+---
+
+## ✅ Objectif
+
+> Permettre à cosign d'accéder **de manière sécurisée** à un KMS (AWS, Azure, Conjur, Vault…) **depuis un environnement personnalisé**, sans exposer de secrets statiques, et en respectant les principes DevSecOps.
+
+---
+
+## 🔁 1. **Cas 1 : Tu es dans un environnement *on-premise* ou *hybride AWS***
+
+### 🔒 Option sécurisée : **Assumer un rôle IAM temporairement**
+
+> 🔧 Utilise `aws sts assume-role` pour ne pas stocker de clé d’accès
+
+```bash
+aws sts assume-role \
+  --role-arn arn:aws:iam::<account_id>:role/CosignSigner \
+  --role-session-name cosign-session
+```
+
+Tu obtiens :
+
+* `AccessKeyId`
+* `SecretAccessKey`
+* `SessionToken`
+
+➡️ Exporte-les temporairement :
+
+```bash
+export AWS_ACCESS_KEY_ID=...
+export AWS_SECRET_ACCESS_KEY=...
+export AWS_SESSION_TOKEN=...
+```
+
+Tu peux maintenant faire :
+
+```bash
+cosign sign --key awskms://us-east-1/alias/cosign-key ghcr.io/mon/image:tag
+```
+
+> ✅ Aucun secret stocké, tout est temporaire et traçable via CloudTrail.
+
+---
+
+## ☁️ 2. **Cas 2 : Tu es en environnement *Azure non managé***
+
+### 🔒 Option sécurisée : **Azure Service Principal avec certificat ou workload identity**
+
+#### Auth via certificat (pas mot de passe) :
+
+1. Génère un certificat pour ton SPN
+2. Enregistre-le dans Azure AD
+3. Utilise `az login --service-principal` avec `--cert`
+
+```bash
+az login --service-principal \
+  --username <appId> \
+  --tenant <tenantId> \
+  --cert /path/to/cert.pem
+```
+
+Tu peux ensuite faire :
+
+```bash
+cosign sign --key azkms://myvault.vault.azure.net/keys/cosign-key ...
+```
+
+#### Ou utilise **Workload Identity Federation** (plus sécurisé, pas de secrets du tout) :
+
+* Compatible GitHub Actions, Kubernetes, etc.
+* Authentification via `oidc` automatique.
+
+---
+
+## 🔐 3. **Cas 3 : Tu utilises CyberArk Conjur (ou HashiCorp Vault)**
+
+### 🔒 Sécurité recommandée : **JWT Authenticator ou TLS Authenticator**
+
+#### Exemple avec JWT (Kubernetes, GitHub Actions, etc.) :
+
+* Conjur valide le token OIDC/JWT émis par ton provider (GitHub OIDC, K8s service account, etc.)
+* Ton app peut récupérer la clé avec :
+
+```bash
+conjur authn-jwt login \
+  --token "$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)"
+```
+
+Puis :
+
+```bash
+conjur variable get -i path/to/cosign.key > /tmp/key
+cosign sign --key file:///tmp/key ...
+```
+
+> ✅ Pas de secrets statiques, auditables, intégrables à tous les environnements.
+
+---
+
+## 🛡️ Résumé des options sécurisées selon contexte
+
+| Environnement          | Accès KMS Sécurisé                       | Secret stocké ? | Audit possible |
+| ---------------------- | ---------------------------------------- | --------------- | -------------- |
+| AWS hybride/on-prem    | `sts assume-role` + vars temporaires     | ❌               | ✅ CloudTrail   |
+| Azure externe          | SPN + cert / Workload Identity           | ❌               | ✅              |
+| Kubernetes             | ServiceAccount + IRSA / MSI / JWT        | ❌               | ✅              |
+| GitHub Actions         | OIDC + federated credentials (AWS/Azure) | ❌               | ✅              |
+| Conjur (on-prem/cloud) | Authenticator JWT / TLS + rotation       | ❌               | ✅              |
+
+
+----------------------------
+Oui, tu **peux tout à fait te passer de Fulcio et Rekor** si tu utilises **Cosign en mode "clé privée gérée localement ou par un KMS"**. C’est un mode **"clé hors TUF/Sigstore"** et totalement **autonome**, ce qui est souvent préféré en environnement **industriel, souverain ou isolé** (air-gapped, cloud privé, etc.).
+
+---
+
+## ✅ 1. Ce que font Fulcio et Rekor
+
+| Composant  | Rôle dans la chaîne Sigstore                                              | Peut-on s’en passer ?                                     |
+| ---------- | ------------------------------------------------------------------------- | --------------------------------------------------------- |
+| **Fulcio** | Fournit une **clé éphémère liée à une identité OIDC** (GitHub, GCP, etc.) | ✅ Oui, si tu as ta propre clé (KMS, fichier, HSM)         |
+| **Rekor**  | Est un **transparency log** (registre public d’empreintes de signatures)  | ✅ Oui, si tu ne veux pas publier dans un registre externe |
+
+---
+
+## 🔐 2. Cas d’usage sans Fulcio/Rekor
+
+### ✅ Exemple : signer une image Docker avec un KMS sans Fulcio/Rekor
+
+```bash
+cosign sign \
+  --key awskms://us-east-1/alias/cosign-key \
+  myregistry.com/mon/image:latest
+```
+
+> 🔒 Cosign utilise ta clé KMS pour signer. Aucun appel à Fulcio.
+> 🗂️ La signature est enregistrée comme **attestation OCI** dans ton registre privé (pas dans Rekor).
+
+### ✅ Exemple : vérifier sans Rekor
+
+```bash
+cosign verify \
+  --key awskms://us-east-1/alias/cosign-key \
+  myregistry.com/mon/image:latest
+```
+
+> 🔎 Cosign va chercher la signature dans le registre OCI, pas dans Rekor.
+
+---
+
+## 🔁 3. Quand Fulcio/Rekor deviennent utiles
+
+Tu **aurais besoin de Fulcio/Rekor** si tu veux :
+
+* 🤝 **Signer sans gérer de clé** (clé éphémère générée automatiquement via Fulcio)
+* 🔍 **Auditer publiquement toutes les signatures** (Rekor = log append-only)
+* 🔐 Utiliser le système Sigstore complet avec **OIDC** (GitHub, Google, Azure)
+
+---
+
+## 🛠️ 4. Résumé – Cosign sans Fulcio/Rekor
+
+| Fonction          | Fulcio/Rekor            | Sans Fulcio/Rekor                |
+| ----------------- | ----------------------- | -------------------------------- |
+| Génération de clé | Fulcio (clé temporaire) | Clé stockée (KMS, fichier, HSM)  |
+| Signature         | Signer + push Rekor     | Signer uniquement                |
+| Vérification      | Clé + Rekor log         | Clé + registre OCI               |
+| Cas d’usage       | Cloud DevSecOps         | CI/CD souverain, air-gapped, KMS |
+
+---
+
+## ❓ Tu veux aller plus loin ?
+
+Je peux te générer un **setup complet Cosign avec KMS (sans Fulcio/Rekor)** :
+
+* Clé AWS KMS, Azure, Vault ou Conjur
+* Signature d’image
+* Pipeline CI/CD GitHub ou Jenkins
+* Vérification dans Kubernetes (Kyverno, OPA, etc.)
+
+
